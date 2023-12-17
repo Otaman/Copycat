@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Copycat", "Copycat\Copycat.csproj", "{7456D1CF-E0D1-457C-8B3C-A94CDC5519C6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Copycat.IntegrationTests", "Copycat.IntegrationTests\Copycat.IntegrationTests.csproj", "{09BC033C-52B4-40B0-9D5E-7D8E33E648D9}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7456D1CF-E0D1-457C-8B3C-A94CDC5519C6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7456D1CF-E0D1-457C-8B3C-A94CDC5519C6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7456D1CF-E0D1-457C-8B3C-A94CDC5519C6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7456D1CF-E0D1-457C-8B3C-A94CDC5519C6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{09BC033C-52B4-40B0-9D5E-7D8E33E648D9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{09BC033C-52B4-40B0-9D5E-7D8E33E648D9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{09BC033C-52B4-40B0-9D5E-7D8E33E648D9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{09BC033C-52B4-40B0-9D5E-7D8E33E648D9}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
