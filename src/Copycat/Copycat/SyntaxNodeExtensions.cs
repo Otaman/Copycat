@@ -89,9 +89,9 @@ internal static class SyntaxNodeExtensions
     
     public static SyntaxTriviaList GenerateCrefComment(this IMethodSymbol method)
     {
-        // get name with generic parameters MethodName{T1, T2}
+        // get name with generic parameters TypeName.MethodName{T1, T2}
         // Get the basic method name
-        var methodName = method.Name;
+        var methodName = method.ContainingType.Name + '.' + method.Name;
 
         // Check if there are generic parameters
         if (method.TypeParameters.Length > 0)

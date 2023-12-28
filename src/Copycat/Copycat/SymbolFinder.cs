@@ -10,9 +10,7 @@ internal class SymbolFinder
     public SymbolFinder(INamedTypeSymbol source) => _source = source;
 
     public ImmutableArray<IMethodSymbol> FindTemplates() =>
-        _source.GetMembers().OfType<IMethodSymbol>()
-            .Where(x => x.GetAttributes().Any(IsTemplateAttribute))
-            .ToImmutableArray();
+        TraverseMethods(_source, x => x.GetAttributes().Any(IsTemplateAttribute)).ToImmutableArray();
 
     public ImmutableArray<IMethodSymbol> FindNotImplementedMethods(INamedTypeSymbol sourceInterface) =>
         sourceInterface.GetMembers().OfType<IMethodSymbol>()
@@ -32,7 +30,16 @@ internal class SymbolFinder
             .Where(x => !x.IsStatic)
             .Where(x => !x.IsImplicitlyDeclared)
             .ToImmutableArray();
+    
+    private static IEnumerable<IMethodSymbol> TraverseMethods(INamedTypeSymbol source, Func<IMethodSymbol, bool> filter)
+    {
+        var result = source.GetMembers().OfType<IMethodSymbol>().Where(filter);
+        if (source.BaseType != null)
+            result = result.Concat(TraverseMethods(source.BaseType, filter));
         
+        return result;
+    }
+
     private static bool IsTemplateAttribute(AttributeData y) => 
         y.AttributeClass is { Name: nameof(TemplateAttribute) };
 }
