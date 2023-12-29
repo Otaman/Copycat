@@ -27,27 +27,30 @@ public class DecoratorGenerator : IIncrementalGenerator
             var (classSyntax, classSymbol) = classData;
             var finder = new SymbolFinder(classSymbol);
             
-            var template = finder.FindTemplates().SingleOrDefault();
+            var templateSelector = new TemplateSelector(finder.FindTemplates());
             
             var interfaceToDecorate = classSymbol.Interfaces.Single();
             var methodsToImplement = finder.FindNotImplementedMethods(interfaceToDecorate);
             var fieldName = finder.FindFieldsOrPropertiesOfType(interfaceToDecorate).First().Name;
-            
-            
-            
+
             var methods = methodsToImplement
-                .Select(methodSymbol => methodSymbol.DeclaringSyntaxReferences.Single())
-                .Select(x => x.GetSyntax())
-                .Cast<MethodDeclarationSyntax>()
-                .Select(method =>
+                .Select(x => new
                 {
+                    Method = (MethodDeclarationSyntax) x.DeclaringSyntaxReferences.Single().GetSyntax(),
+                    Template = templateSelector.FindTemplateForMethod(x)
+                })
+                .Select(x =>
+                {
+                    var template = x.Template;
+                    var method = x.Method;
+            
                     if (template != null)
                     {
                         method = method.AddModifiers(Token(
                             template.GenerateCrefComment(),
                             SyntaxKind.PublicKeyword,
                             TriviaList()));
-
+            
                         if (template.HasAsyncKeyword())
                             method = method.AddModifiers(Token(SyntaxKind.AsyncKeyword));
                     }
@@ -55,7 +58,7 @@ public class DecoratorGenerator : IIncrementalGenerator
                     {
                         method = method.AddModifiers(Token(SyntaxKind.PublicKeyword));
                     }
-                    
+            
                     return method.WithBodyFromTemplate(template, fieldName);
                 })
                 .ToArray();

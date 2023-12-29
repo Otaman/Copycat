@@ -31,8 +31,4 @@ public partial class RetryWrapper : IRateService
             }
         }
     }
-    
-    
-    /// <see cref="Retry{T}(Func{Task{T}})"/>
-    void Dummy() { }
 }
