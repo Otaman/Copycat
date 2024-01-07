@@ -31,7 +31,52 @@ public class DecoratorGenerator : IIncrementalGenerator
             
             var interfaceToDecorate = classSymbol.Interfaces.Single();
             var methodsToImplement = finder.FindNotImplementedMethods(interfaceToDecorate);
-            var fieldName = finder.FindFieldsOrPropertiesOfType(interfaceToDecorate).First().Name;
+            
+            
+            var gen = classSyntax
+                .WithBaseList(null)
+                .WithAttributeLists(new SyntaxList<AttributeListSyntax>())
+                .WithMembers(new SyntaxList<MemberDeclarationSyntax>());
+            gen = gen.ReplaceTrivia(gen.DescendantTrivia()
+                    .Where(trivia => trivia.IsKind(SyntaxKind.SingleLineCommentTrivia) ||
+                                     trivia.IsKind(SyntaxKind.MultiLineCommentTrivia)),
+                (_, _) => Whitespace(""));
+
+            var fieldName = finder.FindFieldsOrPropertiesOfType(interfaceToDecorate).SingleOrDefault()?.Name;
+            if (fieldName == null)
+            {
+                fieldName = "_decorated";
+                gen = gen.AddMembers(
+                    FieldDeclaration(
+                            VariableDeclaration(
+                                    IdentifierName(interfaceToDecorate.ToDisplayString()))
+                                .WithVariables(
+                                    SingletonSeparatedList(
+                                        VariableDeclarator(
+                                            Identifier(fieldName)))))
+                        .WithModifiers(TokenList(Token(SyntaxKind.PrivateKeyword))));
+
+                var constructors = finder.FindConstructors();
+                if(constructors.IsEmpty)
+                {
+                    gen = gen.AddMembers(
+                        ConstructorDeclaration(classSymbol.Name)
+                            .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
+                            .WithParameterList(
+                                ParameterList(
+                                    SingletonSeparatedList(
+                                        Parameter(
+                                                Identifier("decorated"))
+                                            .WithType(
+                                                IdentifierName(interfaceToDecorate.ToDisplayString())))))
+                            .WithBody(Block(
+                                ExpressionStatement(
+                                    AssignmentExpression(
+                                        SyntaxKind.SimpleAssignmentExpression,
+                                        IdentifierName(fieldName),
+                                        IdentifierName("decorated"))))));
+                }
+            }
 
             var methods = methodsToImplement
                 .Select(x => new
@@ -62,16 +107,6 @@ public class DecoratorGenerator : IIncrementalGenerator
                     return method.WithBodyFromTemplate(template, fieldName);
                 })
                 .ToArray();
-            
-            var gen = classSyntax
-                .WithBaseList(null)
-                .WithAttributeLists(new SyntaxList<AttributeListSyntax>())
-                .WithMembers(new SyntaxList<MemberDeclarationSyntax>());
-            gen = gen.ReplaceTrivia(gen.DescendantTrivia()
-                    .Where(trivia => trivia.IsKind(SyntaxKind.SingleLineCommentTrivia) ||
-                                     trivia.IsKind(SyntaxKind.MultiLineCommentTrivia)),
-                (_, _) => Whitespace(""));
-            
             gen = gen.AddMembers(methods.Cast<MemberDeclarationSyntax>().ToArray());
 
             var cu = CompilationUnit()

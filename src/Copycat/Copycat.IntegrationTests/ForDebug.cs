@@ -15,31 +15,16 @@ using Copycat;
 
 namespace Copycat.IntegrationTests;
 
-public interface IReporter
+public interface IPassThrough
 {
-    Task Report(string message);
-    Task Report(string message, Exception exception);
+    void DoSomething();
+    int ReturnSomething();
 }
 
 [Decorate]
-public partial class TaskWrapper : IReporter
+public partial class PassThrough : IPassThrough
 {
-    private readonly IReporter _reporter;
-
-    public TaskWrapper(IReporter reporter) => _reporter = reporter;
-
-    [Template]
-    public async Task WrapTask(Func<Task> action)
-    {
-        try
-        {
-            await action();
-        }
-        catch (Exception e)
-        {
-            await _reporter.Report(""Failed to execute action"", e);
-        }
-    }
+    
 }";
 
         var r = TestHelpers.GetGeneratedOutput<DecoratorGenerator>(source);
