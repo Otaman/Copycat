@@ -10,23 +10,8 @@ public class ForDebug
     [Test]
     public void ShouldResolveTemplate()
     {
-        var source = @"
-using Copycat;
-
-namespace Copycat.IntegrationTests;
-
-public interface IPassThrough
-{
-    void DoSomething();
-    int ReturnSomething();
-}
-
-[Decorate]
-public partial class PassThrough : IPassThrough
-{
-    
-}";
-
+        // get source from the nearby file
+        var source = File.ReadAllText("../../../PassThroughProperties.cs");
         var r = TestHelpers.GetGeneratedOutput<DecoratorGenerator>(source);
     }
 }

@@ -25,89 +25,21 @@ public class DecoratorGenerator : IIncrementalGenerator
         {
             var sw = Stopwatch.StartNew();
             var (classSyntax, classSymbol) = classData;
+            
             var finder = new SymbolFinder(classSymbol);
-            
-            var templateSelector = new TemplateSelector(finder.FindTemplates());
-            
             var interfaceToDecorate = classSymbol.Interfaces.Single();
-            var methodsToImplement = finder.FindNotImplementedMethods(interfaceToDecorate);
             
-            
-            var gen = classSyntax
-                .WithBaseList(null)
-                .WithAttributeLists(new SyntaxList<AttributeListSyntax>())
-                .WithMembers(new SyntaxList<MemberDeclarationSyntax>());
-            gen = gen.ReplaceTrivia(gen.DescendantTrivia()
-                    .Where(trivia => trivia.IsKind(SyntaxKind.SingleLineCommentTrivia) ||
-                                     trivia.IsKind(SyntaxKind.MultiLineCommentTrivia)),
-                (_, _) => Whitespace(""));
+            var gen = GenerateEmptyClassDeclaration(classSyntax);
 
             var fieldName = finder.FindFieldsOrPropertiesOfType(interfaceToDecorate).SingleOrDefault()?.Name;
             if (fieldName == null)
             {
                 fieldName = "_decorated";
-                gen = gen.AddMembers(
-                    FieldDeclaration(
-                            VariableDeclaration(
-                                    IdentifierName(interfaceToDecorate.ToDisplayString()))
-                                .WithVariables(
-                                    SingletonSeparatedList(
-                                        VariableDeclarator(
-                                            Identifier(fieldName)))))
-                        .WithModifiers(TokenList(Token(SyntaxKind.PrivateKeyword))));
-
-                var constructors = finder.FindConstructors();
-                if(constructors.IsEmpty)
-                {
-                    gen = gen.AddMembers(
-                        ConstructorDeclaration(classSymbol.Name)
-                            .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
-                            .WithParameterList(
-                                ParameterList(
-                                    SingletonSeparatedList(
-                                        Parameter(
-                                                Identifier("decorated"))
-                                            .WithType(
-                                                IdentifierName(interfaceToDecorate.ToDisplayString())))))
-                            .WithBody(Block(
-                                ExpressionStatement(
-                                    AssignmentExpression(
-                                        SyntaxKind.SimpleAssignmentExpression,
-                                        IdentifierName(fieldName),
-                                        IdentifierName("decorated"))))));
-                }
+                gen = AddDecoratedFieldAndConstructor(gen, interfaceToDecorate, fieldName, finder, classSymbol);
             }
 
-            var methods = methodsToImplement
-                .Select(x => new
-                {
-                    Method = (MethodDeclarationSyntax) x.DeclaringSyntaxReferences.Single().GetSyntax(),
-                    Template = templateSelector.FindTemplateForMethod(x)
-                })
-                .Select(x =>
-                {
-                    var template = x.Template;
-                    var method = x.Method;
-            
-                    if (template != null)
-                    {
-                        method = method.AddModifiers(Token(
-                            template.GenerateCrefComment(),
-                            SyntaxKind.PublicKeyword,
-                            TriviaList()));
-            
-                        if (template.HasAsyncKeyword())
-                            method = method.AddModifiers(Token(SyntaxKind.AsyncKeyword));
-                    }
-                    else
-                    {
-                        method = method.AddModifiers(Token(SyntaxKind.PublicKeyword));
-                    }
-            
-                    return method.WithBodyFromTemplate(template, fieldName);
-                })
-                .ToArray();
-            gen = gen.AddMembers(methods.Cast<MemberDeclarationSyntax>().ToArray());
+            gen = AddProperties(finder, interfaceToDecorate, gen, fieldName);
+            gen = AddMethods(finder, interfaceToDecorate, fieldName, gen);
 
             var cu = CompilationUnit()
                 .WithUsings(classSyntax.SyntaxTree.GetCompilationUnitRoot().Usings);
@@ -132,7 +64,150 @@ public class DecoratorGenerator : IIncrementalGenerator
             productionContext.AddSource($"{classSymbol.Name}.g.cs", cu.NormalizeWhitespace().ToFullString());
         });
     }
-    
+
+    private static ClassDeclarationSyntax AddProperties(SymbolFinder finder, INamedTypeSymbol interfaceToDecorate,
+        ClassDeclarationSyntax gen, string fieldName)
+    {
+        var propertiesToImplement = finder.FindNotImplementedProperties(interfaceToDecorate);
+        if (!propertiesToImplement.IsEmpty)
+        {
+            gen = gen.AddMembers(propertiesToImplement
+                .Select(x =>
+                {
+                    var accessors = Enumerable.Empty<AccessorDeclarationSyntax>();
+                    if (x.GetMethod != null)
+                    {
+                        accessors = accessors.Append(
+                            AccessorDeclaration(
+                                    SyntaxKind.GetAccessorDeclaration)
+                                .WithBody(Block(
+                                    ReturnStatement(
+                                        MemberAccessExpression(
+                                            SyntaxKind.SimpleMemberAccessExpression,
+                                            IdentifierName(fieldName),
+                                            IdentifierName(x.Name))))));
+                    }
+                        
+                    if (x.SetMethod != null)
+                    {
+                        accessors = accessors.Append(
+                            AccessorDeclaration(
+                                    SyntaxKind.SetAccessorDeclaration)
+                                .WithBody(Block(
+                                    ExpressionStatement(
+                                        AssignmentExpression(
+                                            SyntaxKind.SimpleAssignmentExpression,
+                                            MemberAccessExpression(
+                                                SyntaxKind.SimpleMemberAccessExpression,
+                                                IdentifierName(fieldName),
+                                                IdentifierName(x.Name)),
+                                            IdentifierName("value"))))));
+                    }
+
+                    var property = PropertyDeclaration(
+                            IdentifierName(x.Type.ToDisplayString()),
+                            Identifier(x.Name))
+                        .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
+                        .WithAccessorList(AccessorList(List(accessors)));
+
+                    return property;
+                })
+                .Cast<MemberDeclarationSyntax>()
+                .ToArray());
+        }
+
+        return gen;
+    }
+
+    private static ClassDeclarationSyntax AddMethods(SymbolFinder finder, INamedTypeSymbol interfaceToDecorate,
+        string fieldName, ClassDeclarationSyntax gen)
+    {
+        var templateSelector = new TemplateSelector(finder.FindTemplates());
+        var methodsToImplement = finder.FindNotImplementedMethods(interfaceToDecorate);
+        var methods = methodsToImplement
+            .Select(x => new
+            {
+                Method = (MethodDeclarationSyntax) x.DeclaringSyntaxReferences.Single().GetSyntax(),
+                Template = templateSelector.FindTemplateForMethod(x)
+            })
+            .Select(x =>
+            {
+                var template = x.Template;
+                var method = x.Method;
+            
+                if (template != null)
+                {
+                    method = method.AddModifiers(Token(
+                        template.GenerateCrefComment(),
+                        SyntaxKind.PublicKeyword,
+                        TriviaList()));
+            
+                    if (template.HasAsyncKeyword())
+                        method = method.AddModifiers(Token(SyntaxKind.AsyncKeyword));
+                }
+                else
+                {
+                    method = method.AddModifiers(Token(SyntaxKind.PublicKeyword));
+                }
+            
+                return method.WithBodyFromTemplate(template, fieldName);
+            })
+            .ToArray();
+        gen = gen.AddMembers(methods.Cast<MemberDeclarationSyntax>().ToArray());
+        return gen;
+    }
+
+    private static ClassDeclarationSyntax AddDecoratedFieldAndConstructor(ClassDeclarationSyntax gen,
+        INamedTypeSymbol interfaceToDecorate, string fieldName, SymbolFinder finder, INamedTypeSymbol classSymbol)
+    {
+        gen = gen.AddMembers(
+            FieldDeclaration(
+                    VariableDeclaration(
+                            IdentifierName(interfaceToDecorate.ToDisplayString()))
+                        .WithVariables(
+                            SingletonSeparatedList(
+                                VariableDeclarator(
+                                    Identifier(fieldName)))))
+                .WithModifiers(TokenList(Token(SyntaxKind.PrivateKeyword))));
+
+        var constructors = finder.FindConstructors();
+        if(constructors.IsEmpty)
+        {
+            gen = gen.AddMembers(
+                ConstructorDeclaration(classSymbol.Name)
+                    .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
+                    .WithParameterList(
+                        ParameterList(
+                            SingletonSeparatedList(
+                                Parameter(
+                                        Identifier(fieldName.Substring(1)))
+                                    .WithType(
+                                        IdentifierName(interfaceToDecorate.ToDisplayString())))))
+                    .WithBody(Block(
+                        ExpressionStatement(
+                            AssignmentExpression(
+                                SyntaxKind.SimpleAssignmentExpression,
+                                IdentifierName(fieldName),
+                                IdentifierName(fieldName.Substring(1)))))));
+        }
+
+        return gen;
+    }
+
+    private static ClassDeclarationSyntax GenerateEmptyClassDeclaration(ClassDeclarationSyntax classSyntax)
+    {
+        ClassDeclarationSyntax gen;
+        gen = classSyntax
+            .WithBaseList(null)
+            .WithAttributeLists(new SyntaxList<AttributeListSyntax>())
+            .WithMembers(new SyntaxList<MemberDeclarationSyntax>());
+        gen = gen.ReplaceTrivia(gen.DescendantTrivia()
+                .Where(trivia => trivia.IsKind(SyntaxKind.SingleLineCommentTrivia) ||
+                                 trivia.IsKind(SyntaxKind.MultiLineCommentTrivia)),
+            (_, _) => Whitespace(""));
+        return gen;
+    }
+
     private static bool IsPartialClass(SyntaxNode node) =>
         node is ClassDeclarationSyntax classDeclaration && 
         classDeclaration.Modifiers.Any(SyntaxKind.PartialKeyword);

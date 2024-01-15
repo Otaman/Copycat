@@ -14,6 +14,12 @@ internal class SymbolFinder
 
     public ImmutableArray<IMethodSymbol> FindNotImplementedMethods(INamedTypeSymbol sourceInterface) =>
         sourceInterface.GetMembers().OfType<IMethodSymbol>()
+            .Where(x => x.MethodKind == MethodKind.Ordinary)
+            .Where(x => _source.FindImplementationForInterfaceMember(x) == null)
+            .ToImmutableArray();
+    
+    public ImmutableArray<IPropertySymbol> FindNotImplementedProperties(INamedTypeSymbol sourceInterface) =>
+        sourceInterface.GetMembers().OfType<IPropertySymbol>()
             .Where(x => _source.FindImplementationForInterfaceMember(x) == null)
             .ToImmutableArray();
         
