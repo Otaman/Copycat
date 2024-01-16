@@ -11,7 +11,7 @@ public class ForDebug
     public void ShouldResolveTemplate()
     {
         // get source from the nearby file
-        var source = File.ReadAllText("../../../PassThroughProperties.cs");
+        var source = File.ReadAllText("../../../PassThroughIndexers.cs");
         var r = TestHelpers.GetGeneratedOutput<DecoratorGenerator>(source);
     }
 }

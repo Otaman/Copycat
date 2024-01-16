@@ -20,11 +20,18 @@ internal class SymbolFinder
     
     public ImmutableArray<IPropertySymbol> FindNotImplementedProperties(INamedTypeSymbol sourceInterface) =>
         sourceInterface.GetMembers().OfType<IPropertySymbol>()
+            .Where(x => !x.IsIndexer)
             .Where(x => _source.FindImplementationForInterfaceMember(x) == null)
             .ToImmutableArray();
     
     public ImmutableArray<IEventSymbol> FindNotImplementedEvents(INamedTypeSymbol sourceInterface) =>
         sourceInterface.GetMembers().OfType<IEventSymbol>()
+            .Where(x => _source.FindImplementationForInterfaceMember(x) == null)
+            .ToImmutableArray();
+    
+    public ImmutableArray<IPropertySymbol> FindNotImplementedIndexers(INamedTypeSymbol sourceInterface) =>
+        sourceInterface.GetMembers().OfType<IPropertySymbol>()
+            .Where(x => x.IsIndexer)
             .Where(x => _source.FindImplementationForInterfaceMember(x) == null)
             .ToImmutableArray();
         

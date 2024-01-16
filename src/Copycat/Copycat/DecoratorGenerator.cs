@@ -39,6 +39,7 @@ public class DecoratorGenerator : IIncrementalGenerator
             }
 
             gen = AddProperties(finder, interfaceToDecorate, gen, fieldName);
+            gen = AddIndexers(finder, interfaceToDecorate, gen, fieldName);
             gen = AddEvents(finder, interfaceToDecorate, gen, fieldName);
             gen = AddMethods(finder, interfaceToDecorate, fieldName, gen);
 
@@ -64,6 +65,57 @@ public class DecoratorGenerator : IIncrementalGenerator
             
             productionContext.AddSource($"{classSymbol.Name}.g.cs", cu.NormalizeWhitespace().ToFullString());
         });
+    }
+
+    private static ClassDeclarationSyntax AddIndexers(SymbolFinder finder, INamedTypeSymbol interfaceToDecorate, 
+        ClassDeclarationSyntax gen, string fieldName)
+    {
+        var indexersToImplement = finder.FindNotImplementedIndexers(interfaceToDecorate);
+        if(!indexersToImplement.IsEmpty)
+        {
+            gen = gen.AddMembers(indexersToImplement
+                .Select(x =>
+                {
+                    var indexerSymbol = x;
+                    var indexerSyntax = (IndexerDeclarationSyntax) indexerSymbol.DeclaringSyntaxReferences.Single().GetSyntax();
+                    
+                    var indexerDeclaration = IndexerDeclaration(
+                            IdentifierName(indexerSymbol.Type.ToDisplayString()))
+                        .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
+                        .WithParameterList(indexerSyntax.ParameterList);
+                    
+                    var argumentList = BracketedArgumentList()
+                        .AddArguments(indexerSyntax.ParameterList.Parameters.Select(p => 
+                            Argument(IdentifierName(p.Identifier.Text))).ToArray());
+
+                    var accessors = indexerSyntax.AccessorList!.Accessors.Select(accessor =>
+                    {
+                        if (accessor.Kind() == SyntaxKind.GetAccessorDeclaration)
+                            return accessor.WithExpressionBody(
+                                ArrowExpressionClause(
+                                    ElementAccessExpression(
+                                        IdentifierName(fieldName),
+                                        argumentList)))
+                                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+                        else
+                            return accessor.WithExpressionBody(
+                                ArrowExpressionClause(
+                                    AssignmentExpression(
+                                        SyntaxKind.SimpleAssignmentExpression,
+                                        ElementAccessExpression(
+                                            IdentifierName(fieldName),
+                                            argumentList),
+                                        IdentifierName("value"))))
+                                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+                    }).ToArray();
+                    
+                    return indexerDeclaration.WithAccessorList(AccessorList().AddAccessors(accessors));
+                })
+                .Cast<MemberDeclarationSyntax>()
+                .ToArray());
+        }
+
+        return gen;
     }
 
     private static ClassDeclarationSyntax AddEvents(SymbolFinder finder, INamedTypeSymbol interfaceToDecorate, 
