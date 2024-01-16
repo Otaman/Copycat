@@ -134,12 +134,13 @@ public class DecoratorGenerator : IIncrementalGenerator
                         accessors = accessors.Append(
                             AccessorDeclaration(
                                     SyntaxKind.GetAccessorDeclaration)
-                                .WithBody(Block(
-                                    ReturnStatement(
+                                .WithExpressionBody(
+                                    ArrowExpressionClause(
                                         MemberAccessExpression(
                                             SyntaxKind.SimpleMemberAccessExpression,
                                             IdentifierName(fieldName),
-                                            IdentifierName(x.Name))))));
+                                            IdentifierName(x.Name))))
+                                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
                     }
                         
                     if (x.SetMethod != null)
@@ -147,15 +148,16 @@ public class DecoratorGenerator : IIncrementalGenerator
                         accessors = accessors.Append(
                             AccessorDeclaration(
                                     SyntaxKind.SetAccessorDeclaration)
-                                .WithBody(Block(
-                                    ExpressionStatement(
+                                .WithExpressionBody(
+                                    ArrowExpressionClause(
                                         AssignmentExpression(
                                             SyntaxKind.SimpleAssignmentExpression,
                                             MemberAccessExpression(
                                                 SyntaxKind.SimpleMemberAccessExpression,
                                                 IdentifierName(fieldName),
                                                 IdentifierName(x.Name)),
-                                            IdentifierName("value"))))));
+                                            IdentifierName("value"))))
+                                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
                     }
 
                     var property = PropertyDeclaration(

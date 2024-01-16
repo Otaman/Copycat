@@ -8,5 +8,5 @@ public partial class PassThroughEvents
         _decorated = decorated;
     }
 
-    public event System.EventHandler<System.EventArgs> Event { add => _decorated.Event += value; remove => _decorated.Event -= value; }
+    public event System.EventHandler<System.EventArgs> SomeEvent { add => _decorated.SomeEvent += value; remove => _decorated.SomeEvent -= value; }
 }

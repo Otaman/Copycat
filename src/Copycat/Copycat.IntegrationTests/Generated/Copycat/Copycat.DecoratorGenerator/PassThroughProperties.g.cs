@@ -8,47 +8,13 @@ public partial class PassThroughProperties
         _decorated = decorated;
     }
 
-    public string Name
-    {
-        get
-        {
-            return _decorated.Name;
-        }
+    public string Name { get => _decorated.Name; set => _decorated.Name = value; }
 
-        set
-        {
-            _decorated.Name = value;
-        }
-    }
+    public int Age { get => _decorated.Age; set => _decorated.Age = value; }
 
-    public int Age
-    {
-        get
-        {
-            return _decorated.Age;
-        }
+    public bool GetOnly { get => _decorated.GetOnly; }
 
-        set
-        {
-            _decorated.Age = value;
-        }
-    }
-
-    public bool GetOnly
-    {
-        get
-        {
-            return _decorated.GetOnly;
-        }
-    }
-
-    public object SetOnly
-    {
-        set
-        {
-            _decorated.SetOnly = value;
-        }
-    }
+    public object SetOnly { set => _decorated.SetOnly = value; }
 
     public string SayHello() => _decorated.SayHello();
 }
