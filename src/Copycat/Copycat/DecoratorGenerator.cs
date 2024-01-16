@@ -39,6 +39,7 @@ public class DecoratorGenerator : IIncrementalGenerator
             }
 
             gen = AddProperties(finder, interfaceToDecorate, gen, fieldName);
+            gen = AddEvents(finder, interfaceToDecorate, gen, fieldName);
             gen = AddMethods(finder, interfaceToDecorate, fieldName, gen);
 
             var cu = CompilationUnit()
@@ -63,6 +64,59 @@ public class DecoratorGenerator : IIncrementalGenerator
             
             productionContext.AddSource($"{classSymbol.Name}.g.cs", cu.NormalizeWhitespace().ToFullString());
         });
+    }
+
+    private static ClassDeclarationSyntax AddEvents(SymbolFinder finder, INamedTypeSymbol interfaceToDecorate, 
+        ClassDeclarationSyntax gen, string fieldName)
+    {
+        var eventsToImplement = finder.FindNotImplementedEvents(interfaceToDecorate);
+        if(!eventsToImplement.IsEmpty)
+        {
+            gen = gen.AddMembers(eventsToImplement
+                .Select(x =>
+                {
+                    var eventSymbol = x;
+                    var eventDeclaration = EventDeclaration(
+                            IdentifierName(eventSymbol.Type.ToDisplayString()),
+                            Identifier(eventSymbol.Name))
+                        .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
+                        .WithAccessorList(
+                            AccessorList(
+                                List(
+                                    new[]
+                                    {
+                                        AccessorDeclaration(
+                                                SyntaxKind.AddAccessorDeclaration)
+                                            .WithExpressionBody(
+                                                ArrowExpressionClause(
+                                                    AssignmentExpression(
+                                                        SyntaxKind.AddAssignmentExpression,
+                                                        MemberAccessExpression(
+                                                            SyntaxKind.SimpleMemberAccessExpression,
+                                                            IdentifierName(fieldName),
+                                                            IdentifierName(eventSymbol.Name)),
+                                                        IdentifierName("value"))))
+                                            .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)),
+                                        AccessorDeclaration(
+                                                SyntaxKind.RemoveAccessorDeclaration)
+                                            .WithExpressionBody(
+                                                ArrowExpressionClause(
+                                                    AssignmentExpression(
+                                                        SyntaxKind.SubtractAssignmentExpression,
+                                                        MemberAccessExpression(
+                                                            SyntaxKind.SimpleMemberAccessExpression,
+                                                            IdentifierName(fieldName),
+                                                            IdentifierName(eventSymbol.Name)),
+                                                        IdentifierName("value"))))
+                                            .WithSemicolonToken(Token(SyntaxKind.SemicolonToken))
+                                    })));
+                    return eventDeclaration;
+                })
+                .Cast<MemberDeclarationSyntax>()
+                .ToArray());
+        }
+
+        return gen;
     }
 
     private static ClassDeclarationSyntax AddProperties(SymbolFinder finder, INamedTypeSymbol interfaceToDecorate,

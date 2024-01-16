@@ -22,6 +22,11 @@ internal class SymbolFinder
         sourceInterface.GetMembers().OfType<IPropertySymbol>()
             .Where(x => _source.FindImplementationForInterfaceMember(x) == null)
             .ToImmutableArray();
+    
+    public ImmutableArray<IEventSymbol> FindNotImplementedEvents(INamedTypeSymbol sourceInterface) =>
+        sourceInterface.GetMembers().OfType<IEventSymbol>()
+            .Where(x => _source.FindImplementationForInterfaceMember(x) == null)
+            .ToImmutableArray();
         
     public ImmutableArray<ISymbol> FindFieldsOrPropertiesOfType(INamedTypeSymbol typeToSearch) =>
         _source.GetMembers()

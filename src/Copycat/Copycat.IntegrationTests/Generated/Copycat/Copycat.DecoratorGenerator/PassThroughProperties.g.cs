@@ -34,5 +34,21 @@ public partial class PassThroughProperties
         }
     }
 
+    public bool GetOnly
+    {
+        get
+        {
+            return _decorated.GetOnly;
+        }
+    }
+
+    public object SetOnly
+    {
+        set
+        {
+            _decorated.SetOnly = value;
+        }
+    }
+
     public string SayHello() => _decorated.SayHello();
 }
