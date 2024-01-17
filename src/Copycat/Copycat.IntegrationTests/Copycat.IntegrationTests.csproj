@@ -32,4 +32,9 @@
         <Compile Remove="$(CompilerGeneratedFilesOutputPath)/**/*.cs" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Compile Remove="ForDebugSource.cs" />
+      <Content Include="ForDebugSource.cs" />
+    </ItemGroup>
+
 </Project>

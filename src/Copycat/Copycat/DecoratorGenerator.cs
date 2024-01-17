@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System.Collections.Immutable;
+using System.Diagnostics;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -17,27 +18,32 @@ public class DecoratorGenerator : IIncrementalGenerator
             {
                 var syntax = (ClassDeclarationSyntax)syntaxContext.TargetNode;
                 var symbol = (INamedTypeSymbol)syntaxContext.TargetSymbol;
+                var semantic = syntaxContext.SemanticModel;
                 
-                return new SourceContext(syntax, symbol);
+                return new SourceContext(syntax, symbol, semantic);
             });
         
         context.RegisterSourceOutput(source, (productionContext, classData) =>
         {
             var sw = Stopwatch.StartNew();
-            var (classSyntax, classSymbol) = classData;
+            var (classSyntax, classSymbol, semantic) = classData;
             
-            var finder = new SymbolFinder(classSymbol);
+            var finder = new SymbolFinder(classSymbol, semantic);
             var interfaceToDecorate = classSymbol.Interfaces.Single();
             
             var gen = GenerateEmptyClassDeclaration(classSyntax);
 
+            var uninitialized = finder.FindReadonlyUninitializedFieldsOrProperties();
+            
             var fieldName = finder.FindFieldsOrPropertiesOfType(interfaceToDecorate).SingleOrDefault()?.Name;
             if (fieldName == null)
             {
                 fieldName = "_decorated";
-                gen = AddDecoratedFieldAndConstructor(gen, interfaceToDecorate, fieldName, finder, classSymbol);
+                gen = AddPrivateField(gen, interfaceToDecorate.ToDisplayString(), fieldName);
+                uninitialized = uninitialized.Prepend((interfaceToDecorate.ToDisplayString(), fieldName));
             }
 
+            gen = AddConstructors(gen, finder, uninitialized.ToImmutableArray());
             gen = AddProperties(finder, interfaceToDecorate, gen, fieldName);
             gen = AddIndexers(finder, interfaceToDecorate, gen, fieldName);
             gen = AddEvents(finder, interfaceToDecorate, gen, fieldName);
@@ -265,43 +271,92 @@ public class DecoratorGenerator : IIncrementalGenerator
         return gen;
     }
 
-    private static ClassDeclarationSyntax AddDecoratedFieldAndConstructor(ClassDeclarationSyntax gen,
-        INamedTypeSymbol interfaceToDecorate, string fieldName, SymbolFinder finder, INamedTypeSymbol classSymbol)
+    private static ClassDeclarationSyntax AddPrivateField(ClassDeclarationSyntax gen, string type, string name)
     {
         gen = gen.AddMembers(
             FieldDeclaration(
                     VariableDeclaration(
-                            IdentifierName(interfaceToDecorate.ToDisplayString()))
+                            IdentifierName(type))
                         .WithVariables(
                             SingletonSeparatedList(
                                 VariableDeclarator(
-                                    Identifier(fieldName)))))
+                                    Identifier(name)))))
                 .WithModifiers(TokenList(Token(SyntaxKind.PrivateKeyword))));
-
-        var constructors = finder.FindConstructors();
-        if(constructors.IsEmpty)
+        return gen;
+    }
+    
+    private  static ClassDeclarationSyntax AddConstructors(ClassDeclarationSyntax gen, SymbolFinder finder,
+        ImmutableArray<(string type, string name)> uninitialized)
+    {
+        if (uninitialized.IsEmpty)
+            return gen;
+        
+        var existing = finder.FindConstructors();
+        if (existing.IsEmpty)
+        {
+            
+            var usedNames = new HashSet<string>();
+            gen = gen.AddMembers(
+                GenerateConstructor(gen, uninitialized, usedNames));
+        }
+        else
         {
             gen = gen.AddMembers(
-                ConstructorDeclaration(classSymbol.Name)
-                    .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
-                    .WithParameterList(
-                        ParameterList(
-                            SingletonSeparatedList(
-                                Parameter(
-                                        Identifier(fieldName.Substring(1)))
-                                    .WithType(
-                                        IdentifierName(interfaceToDecorate.ToDisplayString())))))
-                    .WithBody(Block(
-                        ExpressionStatement(
-                            AssignmentExpression(
-                                SyntaxKind.SimpleAssignmentExpression,
-                                IdentifierName(fieldName),
-                                IdentifierName(fieldName.Substring(1)))))));
+                existing
+                    .Select(x =>
+                    {
+                        var constructor = (ConstructorDeclarationSyntax) x.DeclaringSyntaxReferences.Single().GetSyntax();
+                        var usedNames = new HashSet<string>(constructor.ParameterList.Parameters.Select(p => p.Identifier.Text));
+                        var generated = GenerateConstructor(gen, uninitialized, usedNames)
+                            .AddParameterListParameters(constructor.ParameterList.Parameters.ToArray())
+                            .WithInitializer(
+                                ConstructorInitializer(SyntaxKind.ThisConstructorInitializer)
+                                    .AddArgumentListArguments(constructor.ParameterList.Parameters.Select(p =>
+                                        Argument(IdentifierName(p.Identifier.Text))).ToArray()));
+                        return generated;
+                    })
+                    .Cast<MemberDeclarationSyntax>()
+                    .ToArray());
         }
-
         return gen;
     }
 
+    private static ConstructorDeclarationSyntax GenerateConstructor(ClassDeclarationSyntax gen, ImmutableArray<(string type, string name)> uninitialized, HashSet<string> usedNames)
+    {
+        var paramMap = new Dictionary<string, string>();
+        return ConstructorDeclaration(gen.Identifier)
+            .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
+            .WithParameterList(ParameterList().AddParameters(uninitialized.Select(x =>
+            {
+                var name = x.name;
+                        
+                if(name[0] == '_') name = name.Substring(1);
+                if(char.IsUpper(name[0])) name = char.ToLower(name[0]) + name.Substring(1);
+                if (usedNames.Contains(name))
+                {
+                    // find n-th unused name
+                    int i = 1;
+                    for (; usedNames.Contains(name + i); i++){}
+                    name += i;
+                }
+                usedNames.Add(name);
+                paramMap.Add(x.name, name);
+                        
+                return Parameter(Identifier(name))
+                    .WithType(IdentifierName(x.type));
+            }).ToArray()))
+            .WithBody(Block().AddStatements(
+                uninitialized.Select(x =>
+                {
+                    var name = paramMap[x.name];
+                    return (StatementSyntax) ExpressionStatement(
+                        AssignmentExpression(
+                            SyntaxKind.SimpleAssignmentExpression,
+                            IdentifierName(x.name),
+                            IdentifierName(name)));
+                }).ToArray()));
+    }
+    
     private static ClassDeclarationSyntax GenerateEmptyClassDeclaration(ClassDeclarationSyntax classSyntax)
     {
         ClassDeclarationSyntax gen;
@@ -322,5 +377,6 @@ public class DecoratorGenerator : IIncrementalGenerator
     
     private record SourceContext(
         ClassDeclarationSyntax ClassSyntax,
-        INamedTypeSymbol ClassSymbol);
+        INamedTypeSymbol ClassSymbol,
+        SemanticModel Semantic);
 }
