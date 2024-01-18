@@ -103,6 +103,19 @@ internal class SymbolFinder
             .Where(x => !x.IsStatic)
             .Where(x => !x.IsImplicitlyDeclared)
             .ToImmutableArray();
+
+    public ImmutableArray<IMethodSymbol> FindBaseConstructors()
+    {
+        // check for null and not object
+        if(_source.BaseType == null || _source.BaseType.SpecialType == SpecialType.System_Object)
+            return ImmutableArray<IMethodSymbol>.Empty;
+        
+        return _source.BaseType.Constructors
+            .Where(x => x.MethodKind == MethodKind.Constructor)
+            .Where(x => !x.IsStatic)
+            .Where(x => !x.IsImplicitlyDeclared)
+            .ToImmutableArray();
+    }
     
     private static IEnumerable<IMethodSymbol> TraverseMethods(INamedTypeSymbol source, Func<IMethodSymbol, bool> filter)
     {

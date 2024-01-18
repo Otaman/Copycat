@@ -2,7 +2,7 @@ using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
-namespace Copycat.IntegrationTests;
+namespace Copycat.UnitTests;
 
 [TestFixture, Explicit]
 public class ForDebug

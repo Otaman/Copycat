@@ -290,8 +290,11 @@ public class DecoratorGenerator : IIncrementalGenerator
     {
         if (uninitialized.IsEmpty)
             return gen;
-        
-        var existing = finder.FindConstructors();
+
+        var baseConstructors = finder.FindBaseConstructors();
+        var sameLevelConstructors = finder.FindConstructors();
+
+        var existing = baseConstructors.AddRange(sameLevelConstructors);
         if (existing.IsEmpty)
         {
             
@@ -310,7 +313,9 @@ public class DecoratorGenerator : IIncrementalGenerator
                         var generated = GenerateConstructor(gen, uninitialized, usedNames)
                             .AddParameterListParameters(constructor.ParameterList.Parameters.ToArray())
                             .WithInitializer(
-                                ConstructorInitializer(SyntaxKind.ThisConstructorInitializer)
+                                ConstructorInitializer(baseConstructors.Contains(x) 
+                                        ? SyntaxKind.BaseConstructorInitializer 
+                                        : SyntaxKind.ThisConstructorInitializer)
                                     .AddArgumentListArguments(constructor.ParameterList.Parameters.Select(p =>
                                         Argument(IdentifierName(p.Identifier.Text))).ToArray()));
                         return generated;

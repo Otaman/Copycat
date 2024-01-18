@@ -4,6 +4,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Copycat", "Copycat\Copycat.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Copycat.IntegrationTests", "Copycat.IntegrationTests\Copycat.IntegrationTests.csproj", "{09BC033C-52B4-40B0-9D5E-7D8E33E648D9}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Copycat.UnitTests", "Copycat.UnitTests\Copycat.UnitTests.csproj", "{9210AC12-F91A-4C3E-9ABC-029F868A3562}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -18,5 +20,9 @@ Global
 		{09BC033C-52B4-40B0-9D5E-7D8E33E648D9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{09BC033C-52B4-40B0-9D5E-7D8E33E648D9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{09BC033C-52B4-40B0-9D5E-7D8E33E648D9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9210AC12-F91A-4C3E-9ABC-029F868A3562}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9210AC12-F91A-4C3E-9ABC-029F868A3562}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9210AC12-F91A-4C3E-9ABC-029F868A3562}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9210AC12-F91A-4C3E-9ABC-029F868A3562}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

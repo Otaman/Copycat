@@ -78,3 +78,18 @@ public partial class WithAdditionalPropertyAndParameterlessConstructor : IEmpty
     public WithAdditionalPropertyAndParameterlessConstructor() =>
         Dependency = new Dependency();
 }
+
+
+public abstract class BaseClass
+{
+    protected readonly IDependency Dependency;
+    
+    protected BaseClass(IDependency dependency) =>
+        Dependency = dependency;
+}
+
+// Should use base class constructor
+[Decorate]
+public partial class EmptyWithBaseClass : BaseClass, IEmpty
+{
+}
