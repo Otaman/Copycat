@@ -37,10 +37,4 @@ public abstract class ResiliencyBase
 }
 
 [Decorate]
-public partial class RetryWrapperWithBase : ResiliencyBase, ISomeService
-{
-    private readonly ISomeService _rateService;
-    
-    public RetryWrapperWithBase(ISomeService rateService, ILogger logger) : base(logger) => 
-        _rateService = rateService;
-}
+public partial class RetryWrapperWithBase : ResiliencyBase, ISomeService { }

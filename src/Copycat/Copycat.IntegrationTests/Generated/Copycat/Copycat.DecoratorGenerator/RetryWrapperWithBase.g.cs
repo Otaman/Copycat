@@ -4,6 +4,12 @@ using Serilog;
 namespace Copycat.IntegrationTests;
 public partial class RetryWrapperWithBase
 {
+    private Copycat.IntegrationTests.ISomeService _decorated;
+    public RetryWrapperWithBase(Copycat.IntegrationTests.ISomeService decorated, ILogger logger) : base(logger)
+    {
+        _decorated = decorated;
+    }
+
     /// <see cref = "ResiliencyBase.Retry{T}(Func{Task{T}})"/>
     public async Task<decimal> GetRate(string currency)
     {
@@ -12,7 +18,7 @@ public partial class RetryWrapperWithBase
         {
             try
             {
-                return await _rateService.GetRate(currency);
+                return await _decorated.GetRate(currency);
             }
             catch (Exception e)
             {
@@ -31,7 +37,7 @@ public partial class RetryWrapperWithBase
         {
             try
             {
-                return await _rateService.GetRate(currency, date);
+                return await _decorated.GetRate(currency, date);
             }
             catch (Exception e)
             {
