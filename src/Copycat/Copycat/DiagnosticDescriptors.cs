@@ -1,0 +1,23 @@
+using Microsoft.CodeAnalysis;
+
+namespace Copycat;
+
+internal static class DiagnosticDescriptors
+{
+    public static readonly DiagnosticDescriptor FailedToGenerateDecorator = new (
+        id: "CC0001",
+        title: "Copycat failed to generate decorator",
+        messageFormat: "Copycat failed to generate decorator for class {0} due to {1}: {2}",
+        category: "Copycat.DecoratorGenerator",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+    
+    public static readonly DiagnosticDescriptor NoMatchingTemplateForMethod = new (
+        id: "CC1001",
+        title: "Copycat found template(s) but none matched",
+        messageFormat: "Copycat found template(s) but none matched the {0} method of interface {1} in class {2}. " +
+                       "Generated default pass-through implementation.",
+        category: "Copycat.TemplateSelector",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+}
