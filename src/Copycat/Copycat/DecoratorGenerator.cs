@@ -1,5 +1,4 @@
 ﻿using System.Collections.Immutable;
-using System.Diagnostics;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -14,7 +13,7 @@ public class DecoratorGenerator : IIncrementalGenerator
     {
         var source = context.SyntaxProvider.ForAttributeWithMetadataName(
             typeof(DecorateAttribute).FullName!,
-            (node, token) => IsPartialClass(node), (syntaxContext, token) =>
+            (node, _) => IsPartialClass(node), (syntaxContext, _) =>
             {
                 var syntax = (ClassDeclarationSyntax)syntaxContext.TargetNode;
                 var symbol = (INamedTypeSymbol)syntaxContext.TargetSymbol;
@@ -32,7 +31,7 @@ public class DecoratorGenerator : IIncrementalGenerator
 
             try
             {
-                var sw = Stopwatch.StartNew();
+                // var sw = Stopwatch.StartNew();
                 var (classSyntax, classSymbol, semantic) = classData;
             
                 var finder = new SymbolFinder(classSymbol, semantic);
@@ -316,6 +315,7 @@ public class DecoratorGenerator : IIncrementalGenerator
 
         var baseConstructors = finder.FindBaseConstructors();
         var sameLevelConstructors = finder.FindConstructors();
+        var identifier = gen.Identifier;
 
         var existing = baseConstructors.AddRange(sameLevelConstructors);
         if (existing.IsEmpty)
@@ -323,7 +323,7 @@ public class DecoratorGenerator : IIncrementalGenerator
             
             var usedNames = new HashSet<string>();
             gen = gen.AddMembers(
-                GenerateConstructor(gen, uninitialized, usedNames));
+                GenerateConstructor(identifier, uninitialized, usedNames));
         }
         else
         {
@@ -333,7 +333,7 @@ public class DecoratorGenerator : IIncrementalGenerator
                     {
                         var constructor = (ConstructorDeclarationSyntax) x.DeclaringSyntaxReferences.Single().GetSyntax();
                         var usedNames = new HashSet<string>(constructor.ParameterList.Parameters.Select(p => p.Identifier.Text));
-                        var generated = GenerateConstructor(gen, uninitialized, usedNames)
+                        var generated = GenerateConstructor(identifier, uninitialized, usedNames)
                             .AddParameterListParameters(constructor.ParameterList.Parameters.ToArray())
                             .WithInitializer(
                                 ConstructorInitializer(baseConstructors.Contains(x) 
@@ -349,10 +349,10 @@ public class DecoratorGenerator : IIncrementalGenerator
         return gen;
     }
 
-    private static ConstructorDeclarationSyntax GenerateConstructor(ClassDeclarationSyntax gen, ImmutableArray<(string type, string name)> uninitialized, HashSet<string> usedNames)
+    private static ConstructorDeclarationSyntax GenerateConstructor(SyntaxToken identifier, ImmutableArray<(string type, string name)> uninitialized, HashSet<string> usedNames)
     {
         var paramMap = new Dictionary<string, string>();
-        return ConstructorDeclaration(gen.Identifier)
+        return ConstructorDeclaration(identifier)
             .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
             .WithParameterList(ParameterList().AddParameters(uninitialized.Select(x =>
             {
@@ -387,8 +387,7 @@ public class DecoratorGenerator : IIncrementalGenerator
     
     private static ClassDeclarationSyntax GenerateEmptyClassDeclaration(ClassDeclarationSyntax classSyntax)
     {
-        ClassDeclarationSyntax gen;
-        gen = classSyntax
+        var gen = classSyntax
             .WithBaseList(null)
             .WithAttributeLists(new SyntaxList<AttributeListSyntax>())
             .WithMembers(new SyntaxList<MemberDeclarationSyntax>());

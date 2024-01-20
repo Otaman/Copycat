@@ -23,7 +23,7 @@ internal class TemplateSelector
     private static bool IsCandidate(IMethodSymbol template, IMethodSymbol method)
     {
         // has compatible return type
-        if(method.ReturnsVoid && !template.ReturnsVoid || !template.IsGenericMethod && !template.ReturnType.Equals(method.ReturnType))
+        if(method.ReturnsVoid && !template.ReturnsVoid || !template.IsGenericMethod && !SymbolEqualityComparer.Default.Equals(template.ReturnType, method.ReturnType))
             return false;
         
         // has compatible parameters
@@ -35,7 +35,7 @@ internal class TemplateSelector
             if (methodParameter == null)
                 return false;
 
-            if (!templateParameter.Type.Equals(methodParameter.Type))
+            if (!SymbolEqualityComparer.Default.Equals(templateParameter.Type, methodParameter.Type))
                 return false;
         }
 

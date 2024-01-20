@@ -45,8 +45,8 @@ internal class SymbolFinder
         _source.GetMembers()
             .Where(x => !x.IsStatic)
             .Where(x => !x.IsImplicitlyDeclared)
-            .Where(x => x is IFieldSymbol field && field.Type.Equals(typeToSearch) ||
-                        x is IPropertySymbol property && property.Type.Equals(typeToSearch))
+            .Where(x => x is IFieldSymbol field && SymbolEqualityComparer.Default.Equals(field.Type, typeToSearch) ||
+                        x is IPropertySymbol property && SymbolEqualityComparer.Default.Equals(property.Type, typeToSearch))
             .ToImmutableArray();
 
     public IEnumerable<(string type, string name)> FindReadonlyUninitializedFieldsOrProperties() =>
@@ -71,7 +71,7 @@ internal class SymbolFinder
         if (syntax is VariableDeclaratorSyntax { Initializer: not null })
             return true;
 
-        return FindAllAssignmentsInConstructors().Any(x => x.Equals(symbol));
+        return FindAllAssignmentsInConstructors().Contains(symbol, SymbolEqualityComparer.Default);
     }
     
     private bool IsInitialized(IPropertySymbol symbol)
@@ -82,7 +82,7 @@ internal class SymbolFinder
         if (syntax is PropertyDeclarationSyntax { Initializer: not null })
             return true;
 
-        return FindAllAssignmentsInConstructors().Any(x => x.Equals(symbol));
+        return FindAllAssignmentsInConstructors().Contains(symbol, SymbolEqualityComparer.Default);
     }
     
     private ImmutableArray<ISymbol> FindAllAssignmentsInConstructors() =>

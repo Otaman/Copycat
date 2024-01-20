@@ -29,7 +29,7 @@ internal static class SyntaxNodeExtensions
                         TriviaList())))
             .WithArgumentList(
                 ArgumentList(
-                    SingletonSeparatedList<ArgumentSyntax>(
+                    SingletonSeparatedList(
                         Argument(
                             IdentifierName(method.Identifier.ValueText)))));
         
@@ -43,7 +43,7 @@ internal static class SyntaxNodeExtensions
             var expression = template.ExpressionBody;
             expression = expression.ReplaceNodes(
                 expression.DescendantNodes().OfType<InvocationExpressionSyntax>(),
-                (original, rewritten) =>
+                (_, rewritten) =>
                 {
                     if (rewritten.Expression is not IdentifierNameSyntax identifierName ||
                         identifierName.Identifier.ValueText != actionName.ValueText)
@@ -59,7 +59,7 @@ internal static class SyntaxNodeExtensions
             var block = template.Body;
             block = block.ReplaceNodes(
                 block.DescendantNodes().OfType<InvocationExpressionSyntax>(),
-                (original, rewritten) =>
+                (_, rewritten) =>
                 {
                     if (rewritten.Expression is not IdentifierNameSyntax identifierName ||
                         identifierName.Identifier.ValueText != actionName.ValueText)
@@ -69,7 +69,7 @@ internal static class SyntaxNodeExtensions
                 });
             block = block.ReplaceNodes(
                 block.DescendantNodes().OfType<InvocationExpressionSyntax>(),
-                (original, rewritten) =>
+                (_, rewritten) =>
                 {
                     if (rewritten.Expression is not IdentifierNameSyntax nameofIdentifier ||
                         nameofIdentifier.Identifier.ValueText != "nameof" || 
@@ -110,7 +110,7 @@ internal static class SyntaxNodeExtensions
             Trivia(
                 DocumentationCommentTrivia(
                     SyntaxKind.SingleLineDocumentationCommentTrivia,
-                    List<XmlNodeSyntax>(
+                    List(
                         new XmlNodeSyntax[]
                         {
                             XmlText("/// "),
