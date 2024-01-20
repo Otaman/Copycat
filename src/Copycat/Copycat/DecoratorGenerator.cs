@@ -21,7 +21,8 @@ public class DecoratorGenerator : IIncrementalGenerator
                 var semantic = syntaxContext.SemanticModel;
                 
                 return new SourceContext(syntax, symbol, semantic);
-            });
+            })
+            .WithComparer(new SourceContextComparer());
         
         context.RegisterSourceOutput(source, (productionContext, classData) =>
         {
@@ -406,4 +407,121 @@ public class DecoratorGenerator : IIncrementalGenerator
         ClassDeclarationSyntax ClassSyntax,
         INamedTypeSymbol ClassSymbol,
         SemanticModel Semantic);
+    
+    
+    private class InterfaceComparer : IEqualityComparer<INamedTypeSymbol>
+    {
+        // copy of internal SymbolDisplayFormat.TestFormat 
+        private readonly SymbolDisplayFormat _displayFormat = new (
+            globalNamespaceStyle: SymbolDisplayGlobalNamespaceStyle.OmittedAsContaining,
+            typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
+            propertyStyle: SymbolDisplayPropertyStyle.ShowReadWriteDescriptor,
+            localOptions: SymbolDisplayLocalOptions.IncludeType,
+            genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters | SymbolDisplayGenericsOptions.IncludeVariance,
+            memberOptions:
+            SymbolDisplayMemberOptions.IncludeParameters |
+            SymbolDisplayMemberOptions.IncludeContainingType |
+            SymbolDisplayMemberOptions.IncludeType |
+            SymbolDisplayMemberOptions.IncludeRef |
+            SymbolDisplayMemberOptions.IncludeExplicitInterface,
+            kindOptions:
+            SymbolDisplayKindOptions.IncludeMemberKeyword,
+            parameterOptions:
+            SymbolDisplayParameterOptions.IncludeOptionalBrackets |
+            SymbolDisplayParameterOptions.IncludeDefaultValue |
+            SymbolDisplayParameterOptions.IncludeParamsRefOut |
+            SymbolDisplayParameterOptions.IncludeExtensionThis |
+            SymbolDisplayParameterOptions.IncludeType |
+            SymbolDisplayParameterOptions.IncludeName,
+            miscellaneousOptions:
+            SymbolDisplayMiscellaneousOptions.EscapeKeywordIdentifiers |
+            SymbolDisplayMiscellaneousOptions.UseErrorTypeSymbolName |
+            SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier);
+        
+        public bool Equals(INamedTypeSymbol? x, INamedTypeSymbol? y)
+        {
+            if (x == null || y == null)
+                return false;
+            
+            if (x.ToDisplayString(_displayFormat) != y.ToDisplayString(_displayFormat))
+                return false;
+            
+            var xMembers = GetUsefulInterfaceMembers(x).Select(m => m.ToDisplayString(_displayFormat)).ToArray();
+            var yMembers = GetUsefulInterfaceMembers(y).Select(m => m.ToDisplayString(_displayFormat)).ToArray();
+            
+            if (xMembers.Length != yMembers.Length)
+                return false;
+            
+            Array.Sort(xMembers);
+            Array.Sort(yMembers);
+            
+            return xMembers.SequenceEqual(yMembers);
+        }
+
+        public int GetHashCode(INamedTypeSymbol obj)
+        {
+            var hash = 17;
+            // compare just basic info about the interface
+            hash = hash * 23 + obj.Name.GetHashCode();
+            foreach (var memberName in obj.MemberNames)
+            {
+                hash = hash * 23 + memberName.GetHashCode();
+            }
+
+            return hash;
+        }
+        
+        // only methods, properties and events are useful for us, it's all we use for generator
+        private IEnumerable<ISymbol> GetUsefulInterfaceMembers(INamedTypeSymbol symbol)
+        {
+            foreach (var member in symbol.GetMembers())
+            {
+                if(member is IMethodSymbol { MethodKind: MethodKind.Ordinary } method)
+                    yield return method;
+                else if(member is IPropertySymbol property) // indexers are properties too
+                    yield return property;
+                else if(member is IEventSymbol @event)
+                    yield return @event;
+            }
+        }
+    }
+    
+    private class SourceContextComparer : IEqualityComparer<SourceContext>
+    {
+        private readonly InterfaceComparer _interfaceComparer = new();
+        
+        public bool Equals(SourceContext? x, SourceContext? y)
+        {
+            if (x == null || y == null)
+                return false;
+
+            if (x.ClassSymbol.Interfaces.Length != 1 || y.ClassSymbol.Interfaces.Length != 1)
+                return false;
+
+            // class syntax + interface symbol
+            return x.ClassSyntax.GetText().ContentEquals(y.ClassSyntax.GetText()) &&
+                   _interfaceComparer.Equals(x.ClassSymbol.Interfaces[0], y.ClassSymbol.Interfaces[0]);
+        }
+
+        public int GetHashCode(SourceContext obj)
+        {
+            var hash = 0;
+            if(obj.ClassSymbol.Interfaces.Length != 1)
+            {
+                // no interface - doesn't matter what's in the class
+                return hash;
+            }
+            
+            var checksum = obj.ClassSyntax.GetText().GetChecksum();
+
+            // use int from first 4 bytes of checksum (it's SHA1, so it has more than 4 bytes)
+            hash = hash << 8 | checksum[0];
+            hash = hash << 8 | checksum[1];
+            hash = hash << 8 | checksum[2];
+            hash = hash << 8 | checksum[3];
+            
+            hash = hash * 23 + _interfaceComparer.GetHashCode(obj.ClassSymbol.Interfaces[0]);
+            return hash;
+        }
+    }
 }
