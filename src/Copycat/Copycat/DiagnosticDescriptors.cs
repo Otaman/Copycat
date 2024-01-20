@@ -2,6 +2,9 @@ using Microsoft.CodeAnalysis;
 
 namespace Copycat;
 
+// Release tracking analyzer does not generate valid markdown, so disable it
+#pragma warning disable RS2008
+
 internal static class DiagnosticDescriptors
 {
     public static readonly DiagnosticDescriptor FailedToGenerateDecorator = new (
