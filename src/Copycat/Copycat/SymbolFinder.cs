@@ -19,24 +19,24 @@ internal class SymbolFinder
         TraverseMethods(_source, x => x.GetAttributes().Any(IsTemplateAttribute)).ToImmutableArray();
 
     public ImmutableArray<IMethodSymbol> FindNotImplementedMethods(INamedTypeSymbol sourceInterface) =>
-        sourceInterface.GetMembers().OfType<IMethodSymbol>()
+        GetAllInterfaceMembers(sourceInterface).OfType<IMethodSymbol>()
             .Where(x => x.MethodKind == MethodKind.Ordinary)
             .Where(x => _source.FindImplementationForInterfaceMember(x) == null)
             .ToImmutableArray();
     
     public ImmutableArray<IPropertySymbol> FindNotImplementedProperties(INamedTypeSymbol sourceInterface) =>
-        sourceInterface.GetMembers().OfType<IPropertySymbol>()
+        GetAllInterfaceMembers(sourceInterface).OfType<IPropertySymbol>()
             .Where(x => !x.IsIndexer)
             .Where(x => _source.FindImplementationForInterfaceMember(x) == null)
             .ToImmutableArray();
     
     public ImmutableArray<IEventSymbol> FindNotImplementedEvents(INamedTypeSymbol sourceInterface) =>
-        sourceInterface.GetMembers().OfType<IEventSymbol>()
+        GetAllInterfaceMembers(sourceInterface).OfType<IEventSymbol>()
             .Where(x => _source.FindImplementationForInterfaceMember(x) == null)
             .ToImmutableArray();
     
     public ImmutableArray<IPropertySymbol> FindNotImplementedIndexers(INamedTypeSymbol sourceInterface) =>
-        sourceInterface.GetMembers().OfType<IPropertySymbol>()
+        GetAllInterfaceMembers(sourceInterface).OfType<IPropertySymbol>()
             .Where(x => x.IsIndexer)
             .Where(x => _source.FindImplementationForInterfaceMember(x) == null)
             .ToImmutableArray();
@@ -128,4 +128,20 @@ internal class SymbolFinder
 
     private static bool IsTemplateAttribute(AttributeData y) => 
         y.AttributeClass is { Name: nameof(TemplateAttribute) };
+    
+    private ImmutableArray<ISymbol> GetAllInterfaceMembers(INamedTypeSymbol interfaceSymbol) =>
+        GetAllInterfaceMembersImpl(interfaceSymbol).Distinct(SymbolEqualityComparer.Default).ToImmutableArray();
+        
+    
+    private IEnumerable<ISymbol> GetAllInterfaceMembersImpl(INamedTypeSymbol interfaceSymbol)
+    {
+        foreach (var member in interfaceSymbol.GetMembers())
+            yield return member;
+
+        foreach (var parentInterface in interfaceSymbol.Interfaces)
+        {
+            foreach (var member in GetAllInterfaceMembers(parentInterface))
+                yield return member;
+        }
+    }
 }
