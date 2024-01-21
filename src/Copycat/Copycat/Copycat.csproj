@@ -28,12 +28,11 @@
 
     <PropertyGroup>
         <Authors>Serhii Buta</Authors>
-        <Description>Decorator pattert source generator with user-defined template</Description>
+        <Description>Decorator pattern source generator with user-defined template</Description>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageProjectUrl>https://github.com/Otaman/Copycat</PackageProjectUrl>
-        <Version>0.6.0-beta.1</Version>
+        <Version>0.7.0-beta.1</Version>
         <PackageIcon>icon.png</PackageIcon>
-        <Copyright></Copyright>
         <RepositoryUrl>https://github.com/Otaman/Copycat</RepositoryUrl>
         <PackageTags>Source;Generator;SourceGenerator;Decorator;Template</PackageTags>
     </PropertyGroup>
