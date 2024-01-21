@@ -1,16 +1,13 @@
-namespace Copycat.UnitTests;
+namespace Copycat.IntegrationTests;
 
-public interface INotEmpty
+public interface IWithIndexers
 {
-    int Id { get; }
-    void Do();
-    event EventHandler Event;
-    int this[int index] { get; }
+    string this[int index] { get; set; }
+    string this[string key, string suffix] { get; set; }
+    
+    int this[string key] { get; }
+    int this[bool key] { set; }
 }
-public interface IDependency { }
 
 [Decorate]
-public partial class WithAdditionalProperty : INotEmpty
-{
-    private IDependency Dependency { get; }
-}
+public partial class PassThroughIndexers : IWithIndexers { }

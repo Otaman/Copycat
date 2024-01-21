@@ -46,9 +46,9 @@ public class DecoratorGenerator : IIncrementalGenerator
                     uninitialized = uninitialized.Prepend((interfaceToDecorate.ToDisplayString(), fieldName));
                 }
 
-                gen = AddConstructors(gen, finder, uninitialized.ToImmutableArray());
+                gen = AddConstructors(gen, finder, uninitialized.ToImmutableArray(), semantic);
                 gen = AddProperties(finder, interfaceToDecorate, gen, fieldName);
-                gen = AddIndexers(finder, interfaceToDecorate, gen, fieldName);
+                gen = AddIndexers(finder, interfaceToDecorate, gen, fieldName, semantic);
                 gen = AddEvents(finder, interfaceToDecorate, gen, fieldName);
                 gen = AddMethods(finder, interfaceToDecorate, fieldName, gen, ReportDiagnosticToClass);
 
@@ -84,7 +84,7 @@ public class DecoratorGenerator : IIncrementalGenerator
     }
 
     private static ClassDeclarationSyntax AddIndexers(SymbolFinder finder, INamedTypeSymbol interfaceToDecorate, 
-        ClassDeclarationSyntax gen, string fieldName)
+        ClassDeclarationSyntax gen, string fieldName, SemanticModel semantic)
     {
         var indexersToImplement = finder.FindNotImplementedIndexers(interfaceToDecorate);
         if(!indexersToImplement.IsEmpty)
@@ -93,7 +93,14 @@ public class DecoratorGenerator : IIncrementalGenerator
                 .Select(x =>
                 {
                     var indexerSymbol = x;
-                    var indexerSyntax = (IndexerDeclarationSyntax) indexerSymbol.DeclaringSyntaxReferences.Single().GetSyntax();
+                    
+                    var indexerSyntax = (IndexerDeclarationSyntax?) indexerSymbol.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax();
+                    if (indexerSyntax == null)
+                    {
+                        var raw = indexerSymbol.ToMinimalDisplayString(semantic, 0, SymbolDisplayFormats.Friendly);
+                        indexerSyntax = CSharpSyntaxTree.ParseText(raw).GetRoot().DescendantNodesAndSelf()
+                            .OfType<IndexerDeclarationSyntax>().First();
+                    }
                     
                     var indexerDeclaration = IndexerDeclaration(
                             IdentifierName(indexerSymbol.Type.ToDisplayString()))
@@ -314,7 +321,7 @@ public class DecoratorGenerator : IIncrementalGenerator
     }
     
     private  static ClassDeclarationSyntax AddConstructors(ClassDeclarationSyntax gen, SymbolFinder finder,
-        ImmutableArray<(string type, string name)> uninitialized)
+        ImmutableArray<(string type, string name)> uninitialized, SemanticModel semantic)
     {
         if (uninitialized.IsEmpty)
             return gen;
@@ -337,7 +344,14 @@ public class DecoratorGenerator : IIncrementalGenerator
                 existing
                     .Select(x =>
                     {
-                        var constructor = (ConstructorDeclarationSyntax) x.DeclaringSyntaxReferences.Single().GetSyntax();
+                        var constructor = (ConstructorDeclarationSyntax?) x.DeclaringSyntaxReferences.SingleOrDefault()?.GetSyntax();
+                        if (constructor == null)
+                        {
+                            var raw = x.ToMinimalDisplayString(semantic, 0, SymbolDisplayFormats.Friendly);
+                            constructor = CSharpSyntaxTree.ParseText(raw).GetRoot().DescendantNodesAndSelf()
+                                .OfType<ConstructorDeclarationSyntax>().First();
+                        }
+                        
                         var usedNames = new HashSet<string>(constructor.ParameterList.Parameters.Select(p => p.Identifier.Text));
                         var generated = GenerateConstructor(identifier, uninitialized, usedNames)
                             .AddParameterListParameters(constructor.ParameterList.Parameters.ToArray())
@@ -416,43 +430,18 @@ public class DecoratorGenerator : IIncrementalGenerator
     
     private class InterfaceComparer : IEqualityComparer<INamedTypeSymbol>
     {
-        // copy of internal SymbolDisplayFormat.TestFormat 
-        private readonly SymbolDisplayFormat _displayFormat = new (
-            globalNamespaceStyle: SymbolDisplayGlobalNamespaceStyle.OmittedAsContaining,
-            typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
-            propertyStyle: SymbolDisplayPropertyStyle.ShowReadWriteDescriptor,
-            localOptions: SymbolDisplayLocalOptions.IncludeType,
-            genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters | SymbolDisplayGenericsOptions.IncludeVariance,
-            memberOptions:
-            SymbolDisplayMemberOptions.IncludeParameters |
-            SymbolDisplayMemberOptions.IncludeContainingType |
-            SymbolDisplayMemberOptions.IncludeType |
-            SymbolDisplayMemberOptions.IncludeRef |
-            SymbolDisplayMemberOptions.IncludeExplicitInterface,
-            kindOptions:
-            SymbolDisplayKindOptions.IncludeMemberKeyword,
-            parameterOptions:
-            SymbolDisplayParameterOptions.IncludeOptionalBrackets |
-            SymbolDisplayParameterOptions.IncludeDefaultValue |
-            SymbolDisplayParameterOptions.IncludeParamsRefOut |
-            SymbolDisplayParameterOptions.IncludeExtensionThis |
-            SymbolDisplayParameterOptions.IncludeType |
-            SymbolDisplayParameterOptions.IncludeName,
-            miscellaneousOptions:
-            SymbolDisplayMiscellaneousOptions.EscapeKeywordIdentifiers |
-            SymbolDisplayMiscellaneousOptions.UseErrorTypeSymbolName |
-            SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier);
-        
         public bool Equals(INamedTypeSymbol? x, INamedTypeSymbol? y)
         {
             if (x == null || y == null)
                 return false;
+
+            var format = SymbolDisplayFormats.Detailed;
             
-            if (x.ToDisplayString(_displayFormat) != y.ToDisplayString(_displayFormat))
+            if (x.ToDisplayString(format) != y.ToDisplayString(format))
                 return false;
             
-            var xMembers = GetUsefulInterfaceMembers(x).Select(m => m.ToDisplayString(_displayFormat)).ToArray();
-            var yMembers = GetUsefulInterfaceMembers(y).Select(m => m.ToDisplayString(_displayFormat)).ToArray();
+            var xMembers = GetUsefulInterfaceMembers(x).Select(m => m.ToDisplayString(format)).ToArray();
+            var yMembers = GetUsefulInterfaceMembers(y).Select(m => m.ToDisplayString(format)).ToArray();
             
             if (xMembers.Length != yMembers.Length)
                 return false;
