@@ -23,4 +23,13 @@ internal static class DiagnosticDescriptors
         category: "Copycat.TemplateSelector",
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
+    
+    public static readonly DiagnosticDescriptor TemplateSourceCodeIsNotAccessible = new (
+        id: "CC1002",
+        title: "Copycat cannot access template source code",
+        messageFormat: "Copycat ignored template {0} that is not defined inside of the current project. " +
+                       "Template source code is not accessible and cannot be used to generate decorator.",
+        category: "Copycat.TemplateSelector",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
 }

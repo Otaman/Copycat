@@ -247,7 +247,15 @@ public class DecoratorGenerator : IIncrementalGenerator
         string fieldName, ClassDeclarationSyntax gen, Action<DiagnosticDescriptor, object[]> reportDiagnostic)
     {
         var templates = finder.FindTemplates();
-        var templateSelector = new TemplateSelector(templates);
+        var accessibleTemplates = templates.Where(x => !x.DeclaringSyntaxReferences.IsEmpty).ToImmutableArray();
+        foreach (var template in accessibleTemplates.Except(templates, SymbolEqualityComparer.Default))
+        {
+            reportDiagnostic(DiagnosticDescriptors.TemplateSourceCodeIsNotAccessible, 
+                new object[]{template!.ToDisplayString()});
+        }
+        
+        var templateSelector = new TemplateSelector(accessibleTemplates);
+        
         var methodsToImplement = finder.FindNotImplementedMethods(interfaceToDecorate);
         var methods = methodsToImplement
             .Select(x => new
