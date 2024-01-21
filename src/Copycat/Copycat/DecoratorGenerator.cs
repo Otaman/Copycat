@@ -50,7 +50,7 @@ public class DecoratorGenerator : IIncrementalGenerator
                 gen = AddProperties(finder, interfaceToDecorate, gen, fieldName);
                 gen = AddIndexers(finder, interfaceToDecorate, gen, fieldName, semantic);
                 gen = AddEvents(finder, interfaceToDecorate, gen, fieldName);
-                gen = AddMethods(finder, interfaceToDecorate, fieldName, gen, ReportDiagnosticToClass);
+                gen = AddMethods(finder, interfaceToDecorate, fieldName, gen, ReportDiagnosticToClass, semantic);
 
                 var cu = CompilationUnit()
                     .WithUsings(classSyntax.SyntaxTree.GetCompilationUnitRoot().Usings);
@@ -93,15 +93,8 @@ public class DecoratorGenerator : IIncrementalGenerator
                 .Select(x =>
                 {
                     var indexerSymbol = x;
-                    
-                    var indexerSyntax = (IndexerDeclarationSyntax?) indexerSymbol.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax();
-                    if (indexerSyntax == null)
-                    {
-                        var raw = indexerSymbol.ToMinimalDisplayString(semantic, 0, SymbolDisplayFormats.Friendly);
-                        indexerSyntax = CSharpSyntaxTree.ParseText(raw).GetRoot().DescendantNodesAndSelf()
-                            .OfType<IndexerDeclarationSyntax>().First();
-                    }
-                    
+                    var indexerSyntax = GetSyntaxOrFallbackToSymbolBased<IndexerDeclarationSyntax>(indexerSymbol, semantic);
+
                     var indexerDeclaration = IndexerDeclaration(
                             IdentifierName(indexerSymbol.Type.ToDisplayString()))
                         .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
@@ -139,6 +132,17 @@ public class DecoratorGenerator : IIncrementalGenerator
         }
 
         return gen;
+    }
+
+    private static T GetSyntaxOrFallbackToSymbolBased<T>(ISymbol symbol, SemanticModel semantic, string suffix = "") 
+        where T : SyntaxNode
+    {
+        var syntax = (T?) symbol.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax();
+        if (syntax != null) return syntax;
+        
+        var text = symbol.ToMinimalDisplayString(semantic, 0, SymbolDisplayFormats.Friendly) + suffix;
+        text = "class C { " + text + " }"; // wrap in dummy class as the symbol is class member
+        return CSharpSyntaxTree.ParseText(text).GetRoot().DescendantNodesAndSelf().OfType<T>().First();
     }
 
     private static ClassDeclarationSyntax AddEvents(SymbolFinder finder, INamedTypeSymbol interfaceToDecorate, 
@@ -251,7 +255,7 @@ public class DecoratorGenerator : IIncrementalGenerator
     }
 
     private static ClassDeclarationSyntax AddMethods(SymbolFinder finder, INamedTypeSymbol interfaceToDecorate,
-        string fieldName, ClassDeclarationSyntax gen, Action<DiagnosticDescriptor, object[]> reportDiagnostic)
+        string fieldName, ClassDeclarationSyntax gen, Action<DiagnosticDescriptor, object[]> reportDiagnostic, SemanticModel semantic)
     {
         var templates = finder.FindTemplates();
         var accessibleTemplates = templates.Where(x => !x.DeclaringSyntaxReferences.IsEmpty).ToImmutableArray();
@@ -267,7 +271,7 @@ public class DecoratorGenerator : IIncrementalGenerator
         var methods = methodsToImplement
             .Select(x => new
             {
-                Method = (MethodDeclarationSyntax) x.DeclaringSyntaxReferences.Single().GetSyntax(),
+                Method = GetSyntaxOrFallbackToSymbolBased<MethodDeclarationSyntax>(x, semantic, ";"),
                 Template = templateSelector.FindTemplateForMethod(x)
             })
             .Select(x =>
@@ -345,21 +349,21 @@ public class DecoratorGenerator : IIncrementalGenerator
                     .Select(x =>
                     {
                         var constructor = (ConstructorDeclarationSyntax?) x.DeclaringSyntaxReferences.SingleOrDefault()?.GetSyntax();
-                        if (constructor == null)
-                        {
-                            var raw = x.ToMinimalDisplayString(semantic, 0, SymbolDisplayFormats.Friendly);
-                            constructor = CSharpSyntaxTree.ParseText(raw).GetRoot().DescendantNodesAndSelf()
-                                .OfType<ConstructorDeclarationSyntax>().First();
-                        }
+
+                        var parameters = 
+                            constructor?.ParameterList.Parameters ?? 
+                            SeparatedList<ParameterSyntax>().AddRange(x.Parameters.Select(p =>
+                                Parameter(Identifier(p.Name))
+                                    .WithType(IdentifierName(p.Type.ToDisplayString()))));
                         
-                        var usedNames = new HashSet<string>(constructor.ParameterList.Parameters.Select(p => p.Identifier.Text));
+                        var usedNames = new HashSet<string>(parameters.Select(p => p.Identifier.Text));
                         var generated = GenerateConstructor(identifier, uninitialized, usedNames)
-                            .AddParameterListParameters(constructor.ParameterList.Parameters.ToArray())
+                            .AddParameterListParameters(parameters.ToArray())
                             .WithInitializer(
                                 ConstructorInitializer(baseConstructors.Contains(x) 
                                         ? SyntaxKind.BaseConstructorInitializer 
                                         : SyntaxKind.ThisConstructorInitializer)
-                                    .AddArgumentListArguments(constructor.ParameterList.Parameters.Select(p =>
+                                    .AddArgumentListArguments(parameters.Select(p =>
                                         Argument(IdentifierName(p.Identifier.Text))).ToArray()));
                         return generated;
                     })

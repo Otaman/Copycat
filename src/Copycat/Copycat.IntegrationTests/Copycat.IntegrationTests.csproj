@@ -19,6 +19,7 @@
     </ItemGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\Copycat.IntegrationTests.Core\Copycat.IntegrationTests.Core.csproj" />
       <ProjectReference Include="..\Copycat\Copycat.csproj" OutputItemType="Analyzer"/>
     </ItemGroup>
 

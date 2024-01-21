@@ -6,6 +6,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Copycat.IntegrationTests", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Copycat.UnitTests", "Copycat.UnitTests\Copycat.UnitTests.csproj", "{9210AC12-F91A-4C3E-9ABC-029F868A3562}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Copycat.IntegrationTests.Core", "Copycat.IntegrationTests.Core\Copycat.IntegrationTests.Core.csproj", "{C59ADF29-7DE2-4FB8-844B-E0A1D02E7479}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,5 +26,9 @@ Global
 		{9210AC12-F91A-4C3E-9ABC-029F868A3562}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9210AC12-F91A-4C3E-9ABC-029F868A3562}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9210AC12-F91A-4C3E-9ABC-029F868A3562}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C59ADF29-7DE2-4FB8-844B-E0A1D02E7479}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C59ADF29-7DE2-4FB8-844B-E0A1D02E7479}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C59ADF29-7DE2-4FB8-844B-E0A1D02E7479}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C59ADF29-7DE2-4FB8-844B-E0A1D02E7479}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

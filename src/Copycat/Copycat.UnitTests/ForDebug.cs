@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using Copycat.IntegrationTests.Core;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
@@ -29,6 +30,7 @@ internal class TestHelpers
             {
                 MetadataReference.CreateFromFile(typeof(T).Assembly.Location),
                 MetadataReference.CreateFromFile(typeof(DecorateAttribute).Assembly.Location),
+                MetadataReference.CreateFromFile(typeof(IRemoteInterface).Assembly.Location),
                 MetadataReference.CreateFromFile(typeof(System.ComponentModel.DataAnnotations.DisplayAttribute).Assembly.Location),
             });
 
