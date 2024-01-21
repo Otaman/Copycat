@@ -14,6 +14,8 @@ public class ForDebug
         // get source from the nearby file
         var source = File.ReadAllText("../../../ForDebugSource.cs");
         var r = TestHelpers.GetGeneratedOutput<DecoratorGenerator>(source);
+        var output = r.Output;
+        Console.WriteLine(output);
     }
 }
 
