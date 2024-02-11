@@ -9,10 +9,6 @@ public interface ICache<T>
 [Decorate]
 public partial class CacheDecorator<T> : ICache<T>
 {
-    private readonly ICache<T> _decorated;
-    
-    public CacheDecorator(ICache<T> decorated) => _decorated = decorated;
-    
     [Template]
     public async Task<T> RetryOnce(Func<Task<T>> action, string key)
     {
