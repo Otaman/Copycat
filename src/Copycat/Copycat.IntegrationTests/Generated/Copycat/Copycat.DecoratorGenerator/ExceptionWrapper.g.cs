@@ -6,7 +6,7 @@ namespace Copycat.IntegrationTests;
 public partial class ExceptionWrapper
 {
     /// <see cref = "ExceptionWrapper.WrapExceptions(Func{User}, Guid)"/>
-    public User GetUser(Guid id)
+    public Copycat.IntegrationTests.User GetUser(System.Guid id)
     {
         var sw = Stopwatch.StartNew();
         try
@@ -23,7 +23,7 @@ public partial class ExceptionWrapper
     }
 
     /// <see cref = "ExceptionWrapper.WrapExceptions(Func{User}, Guid)"/>
-    public User CreateUser(Guid id, string name)
+    public Copycat.IntegrationTests.User CreateUser(System.Guid id, string name)
     {
         var sw = Stopwatch.StartNew();
         try
@@ -40,7 +40,7 @@ public partial class ExceptionWrapper
     }
 
     /// <see cref = "ExceptionWrapper.WrapExceptions(Func{User}, Guid)"/>
-    public User UpdateUserName(Guid id, string name)
+    public Copycat.IntegrationTests.User UpdateUserName(System.Guid id, string name)
     {
         var sw = Stopwatch.StartNew();
         try

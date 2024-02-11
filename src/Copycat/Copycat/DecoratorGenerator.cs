@@ -93,7 +93,7 @@ public class DecoratorGenerator : IIncrementalGenerator
                 .Select(x =>
                 {
                     var indexerSymbol = x;
-                    var indexerSyntax = GetSyntaxOrFallbackToSymbolBased<IndexerDeclarationSyntax>(indexerSymbol, semantic);
+                    var indexerSyntax = BuildSyntaxFromSymbol<IndexerDeclarationSyntax>(indexerSymbol, semantic);
 
                     var indexerDeclaration = IndexerDeclaration(
                             IdentifierName(indexerSymbol.Type.ToDisplayString()))
@@ -134,12 +134,9 @@ public class DecoratorGenerator : IIncrementalGenerator
         return gen;
     }
 
-    private static T GetSyntaxOrFallbackToSymbolBased<T>(ISymbol symbol, SemanticModel semantic, string suffix = "") 
+    private static T BuildSyntaxFromSymbol<T>(ISymbol symbol, SemanticModel semantic, string suffix = "") 
         where T : SyntaxNode
     {
-        var syntax = (T?) symbol.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax();
-        if (syntax != null) return syntax;
-        
         var text = symbol.ToMinimalDisplayString(semantic, 0, SymbolDisplayFormats.Friendly) + suffix;
         text = "class C { " + text + " }"; // wrap in dummy class as the symbol is class member
         return CSharpSyntaxTree.ParseText(text).GetRoot().DescendantNodesAndSelf().OfType<T>().First();
@@ -271,7 +268,7 @@ public class DecoratorGenerator : IIncrementalGenerator
         var methods = methodsToImplement
             .Select(x => new
             {
-                Method = GetSyntaxOrFallbackToSymbolBased<MethodDeclarationSyntax>(x, semantic, ";"),
+                Method = BuildSyntaxFromSymbol<MethodDeclarationSyntax>(x, semantic, ";"),
                 Template = templateSelector.FindTemplateForMethod(x)
             })
             .Select(x =>

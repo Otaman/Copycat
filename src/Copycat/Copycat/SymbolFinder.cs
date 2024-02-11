@@ -130,18 +130,25 @@ internal class SymbolFinder
         y.AttributeClass is { Name: nameof(TemplateAttribute) };
     
     private ImmutableArray<ISymbol> GetAllInterfaceMembers(INamedTypeSymbol interfaceSymbol) =>
-        GetAllInterfaceMembersImpl(interfaceSymbol).Distinct(SymbolEqualityComparer.Default).ToImmutableArray();
+        GetAllInterfaceMembersImpl(interfaceSymbol, new HashSet<string>()).ToImmutableArray();
         
     
-    private IEnumerable<ISymbol> GetAllInterfaceMembersImpl(INamedTypeSymbol interfaceSymbol)
+    private IEnumerable<ISymbol> GetAllInterfaceMembersImpl(INamedTypeSymbol interfaceSymbol, HashSet<string> visitedMembers)
     {
         foreach (var member in interfaceSymbol.GetMembers())
-            yield return member;
+        {
+            var displayString = member.ToDisplayString(SymbolDisplayFormats.DetailedNoReturnType);
+            if(visitedMembers.Add(displayString))
+                yield return member;
+        }
 
         foreach (var parentInterface in interfaceSymbol.Interfaces)
         {
-            foreach (var member in GetAllInterfaceMembers(parentInterface))
-                yield return member;
+            foreach (var member in GetAllInterfaceMembersImpl(parentInterface, visitedMembers))
+            {
+                if(interfaceSymbol.FindImplementationForInterfaceMember(member) == null)
+                    yield return member;
+            }
         }
     }
 }

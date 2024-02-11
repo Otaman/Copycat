@@ -11,7 +11,7 @@ public partial class RetryWrapperWithBase
     }
 
     /// <see cref = "ResiliencyBase.Retry{T}(Func{Task{T}})"/>
-    public async Task<decimal> GetRate(string currency)
+    public async System.Threading.Tasks.Task<decimal> GetRate(string currency)
     {
         var retryCount = 0;
         while (true)
@@ -30,7 +30,7 @@ public partial class RetryWrapperWithBase
     }
 
     /// <see cref = "ResiliencyBase.Retry{T}(Func{Task{T}})"/>
-    public async Task<decimal> GetRate(string currency, DateTime date)
+    public async System.Threading.Tasks.Task<decimal> GetRate(string currency, System.DateTime date)
     {
         var retryCount = 0;
         while (true)
