@@ -2,8 +2,6 @@
 Source generator for creating decorators by templates.
 The source generator intents to simplify implementation of a [Decorator Pattern](https://en.wikipedia.org/wiki/Decorator_pattern).
 
-> The package is still in *beta*. Currently, caching is not implemented, so the source generator regenerates output for every input, which may slow down IDEs in larger projects.
-
 ## Use Cases
 
 Les't begin from simple scenario. We need to decorate ISomeInterface:
