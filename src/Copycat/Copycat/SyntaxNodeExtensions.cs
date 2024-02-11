@@ -17,7 +17,17 @@ internal static class SyntaxNodeExtensions
                     SyntaxKind.SimpleMemberAccessExpression,
                     IdentifierName(fieldName),
                     IdentifierName(method.Identifier)))
-            .WithArgumentList(ArgumentList(SeparatedList(method.ParameterList.Parameters.Select(x => Argument(IdentifierName(x.Identifier))))));
+            .WithArgumentList(ArgumentList(SeparatedList(method.ParameterList.Parameters.Select(x =>
+            {
+                var argument = Argument(IdentifierName(x.Identifier));
+                
+                if (x.Modifiers.Any(SyntaxKind.RefKeyword))
+                    argument = argument.WithRefOrOutKeyword(Token(SyntaxKind.RefKeyword));
+                if (x.Modifiers.Any(SyntaxKind.OutKeyword))
+                    argument = argument.WithRefOrOutKeyword(Token(SyntaxKind.OutKeyword));
+                
+                return argument;
+            }))));
         
         var nameofCall = InvocationExpression(
                 IdentifierName(
